@@ -1,0 +1,53 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/spf13/pflag"
+)
+
+type Config struct {
+	Port      int
+	ServerDir string
+	DataDir   string
+	MaxRAM    string
+	MinRAM    string
+	JVMFlags  string
+	JavaPath  string
+}
+
+const (
+	Port     = 8000
+	MaxRAM   = "4G"
+	MinRAM   = "2G"
+	JVMFlags = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40"
+)
+
+var CustomPort int
+
+func New() Config {
+	pflag.IntVar(&CustomPort, "port", 0, "sets the server startup port")
+	pflag.Parse()
+
+	port := CustomPort
+	if port == 0 {
+		port = Port
+	}
+
+	exe, err := os.Executable()
+	dataDir := "."
+	if err == nil {
+		dataDir = filepath.Dir(exe)
+	}
+	dataDir = filepath.Join(dataDir, "ctlcraft")
+
+	return Config{
+		Port:      port,
+		DataDir:   dataDir,
+		ServerDir: filepath.Join(dataDir, "servers", "default"),
+		MaxRAM:    MaxRAM,
+		MinRAM:    MinRAM,
+		JVMFlags:  JVMFlags,
+	}
+}
