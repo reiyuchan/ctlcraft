@@ -120,7 +120,7 @@ export const api = {
   openServerFolder: () => apiVoid('/api/folder/open', { method: 'POST', body: JSON.stringify({ path: '' }) }),
 
   // Server versions
-  getPaperBuilds: (mcVersion: string) => apiFetch<string[]>('/api/versions/paper/' + mcVersion + '/builds'),
+  getPaperBuilds: (mcVersion: string) => apiFetch<number[]>('/api/versions/paper/' + mcVersion + '/builds'),
   getPaperDownloadUrl: (mcVersion: string, build: string) =>
     apiFetch<string>('/api/versions/paper/' + mcVersion + '/build/' + build + '/url'),
   getVanillaVersions: () => apiFetch<VanillaVersion[]>('/api/versions/vanilla'),
@@ -128,6 +128,31 @@ export const api = {
     apiFetch<string>('/api/versions/vanilla/url', { method: 'POST', body: JSON.stringify({ versionUrl }) }),
   installFabricLoader: (mcVersion: string) =>
     apiVoid('/api/versions/fabric/install', { method: 'POST', body: JSON.stringify({ mcVersion }) }),
+
+  // New software type version listing
+  getPurpurVersions: (mcVersion: string) =>
+    apiFetch<any[]>('/api/versions/purpur/' + mcVersion),
+  getFoliaVersions: (mcVersion: string) =>
+    apiFetch<any[]>('/api/versions/folia/' + mcVersion),
+  getFoliaDownloadUrl: (mcVersion: string, build: string) =>
+    apiFetch<{ url: string }>('/api/versions/folia/' + mcVersion + '/build/' + build + '/url'),
+  getNeoForgeVersions: (mcVersion: string) =>
+    apiFetch<any[]>('/api/versions/neoforge/' + mcVersion),
+  getForgeVersions: (mcVersion: string) =>
+    apiFetch<any[]>('/api/versions/forge/' + mcVersion),
+  getQuiltVersions: (mcVersion: string) =>
+    apiFetch<any[]>('/api/versions/quilt/' + mcVersion),
+  getMagmaVersions: (mcVersion: string) =>
+    apiFetch<any[]>('/api/versions/magma/' + mcVersion),
+  getSpigotInfo: () =>
+    apiFetch<any[]>('/api/versions/spigot'),
+
+  // Unified install
+  installServerSoftware: (software: string, mcVersion: string, build: string) =>
+    apiVoid('/api/server/install', {
+      method: 'POST',
+      body: JSON.stringify({ software, mcVersion, build }),
+    }),
 }
 
 // ── Events (SSE) ──────────────────────────────────────────────────────────────
