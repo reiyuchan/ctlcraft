@@ -450,9 +450,36 @@ const BUILD_CATALOG: Record<string, Record<string, ServerBuild[]>> = {
     Folia: {
         '1.21.4': [
             makeBuild('Folia', '1.21.4', '28', '2024-12-22', 'release', '50.1 MB', 21, 'Folia — region-based multithreading for large servers'),
+            makeBuild('Folia', '1.21.4', '27', '2024-12-18', 'release', '50.0 MB', 21, 'Region scheduling improvements, bug fixes'),
         ],
         '1.20.4': [
             makeBuild('Folia', '1.20.4', '18', '2024-02-10', 'release', '47.8 MB', 17, 'Folia 1.20.4'),
+        ],
+    },
+    Magma: {
+        '1.21.4': [
+            makeBuild('Magma', '1.21.4', '28', '2024-12-22', 'release', '50.1 MB', 21, 'Magma 1.21.4 — hybrid Forge + Bukkit server'),
+        ],
+        '1.20.4': [
+            makeBuild('Magma', '1.20.4', '18', '2024-02-10', 'release', '47.8 MB', 17, 'Magma 1.20.4'),
+        ],
+    },
+    Spigot: {
+        '1.21.4': [
+            makeBuild('Spigot', '1.21.4', '4290', '2024-12-15', 'release', '45.0 MB', 21, 'Spigot 1.21.4 — Bukkit API compatible'),
+            makeBuild('Spigot', '1.21.4', '4289', '2024-12-10', 'release', '44.9 MB', 21, 'Bug fixes, performance improvements'),
+        ],
+        '1.20.4': [
+            makeBuild('Spigot', '1.20.4', '3869', '2024-01-10', 'release', '43.5 MB', 17, 'Spigot 1.20.4'),
+        ],
+    },
+    Quilt: {
+        '1.21.4': [
+            makeBuild('Quilt', '1.21.4', '0.26.4', '2024-12-10', 'release', '5.1 MB', 21, 'Quilt loader 0.26.4 — Fabric-compatible'),
+            makeBuild('Quilt', '1.21.4', '0.26.3', '2024-12-01', 'release', '5.0 MB', 21, 'Quilt loader 0.26.3'),
+        ],
+        '1.20.4': [
+            makeBuild('Quilt', '1.20.4', '0.24.0', '2024-01-18', 'release', '4.8 MB', 17, 'Quilt loader 0.24.0'),
         ],
     },
 }
@@ -539,36 +566,11 @@ export default defineComponent({
             try {
                 const { tauri } = await import('../api')
 
-                let downloadUrl = ''
+                // Use unified backend install API for all software types
+                await tauri.installServerSoftware(build.software, build.mcVersion, build.build)
+                await tauri.acceptEula()
 
-                if (build.software === 'Paper') {
-                    const res = await fetch(`https://api.papermc.io/v2/projects/paper/versions/${build.mcVersion}/builds/${build.build}`)
-                    const data = await res.json()
-                    const filename = data.downloads.application.name
-                    downloadUrl = `https://api.papermc.io/v2/projects/paper/versions/${build.mcVersion}/builds/${build.build}/downloads/${filename}`
-                } else if (build.software === 'Vanilla') {
-                    const res = await fetch('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json')
-                    const manifest = await res.json()
-                    const v = manifest.versions.find((x: any) => x.id === build.mcVersion)
-                    if (v) {
-                        const details = await (await fetch(v.url)).json()
-                        downloadUrl = details.downloads.server.url
-                    }
-                } else if (build.software === 'Purpur') {
-                    downloadUrl = `https://api.purpurmc.org/v2/purpur/${build.mcVersion}/${build.build}/download`
-                } else if (build.software === 'Fabric') {
-                    const loaderRes = await fetch(`https://meta.fabricmc.net/v2/versions/loader/${build.mcVersion}`)
-                    const loaders = await loaderRes.json()
-                    const loaderVersion = loaders.find((l: any) => l.loader.version === build.build)
-                    if (loaderVersion) {
-                        downloadUrl = loaderVersion.maven + `/${loaderVersion.loader.version}/${loaderVersion.loader.version}-${loaderVersion.loader.hash}.jar`
-                    }
-                }
-
-                if (downloadUrl) {
-                    await tauri.downloadServerJar(downloadUrl)
-                    await tauri.acceptEula()
-                }
+                this.$emit('toast', { msg: `Downloaded ${build.software} ${build.mcVersion} (build ${build.build})`, type: 'success' })
             } catch (e: any) {
                 this.$emit('toast', { msg: `Download failed: ${e}`, type: 'danger' })
             }

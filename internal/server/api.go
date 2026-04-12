@@ -52,6 +52,17 @@ func (h Handler) routes(app *fiber.App) {
 	g.Get("/versions/vanilla", h.vanillaVersions)
 	g.Post("/versions/vanilla/url", h.vanillaDownloadURL)
 	g.Post("/versions/fabric/install", h.installFabric)
+
+	g.Get("/versions/purpur/:mcVersion", h.purpurVersions)
+	g.Get("/versions/folia/:mcVersion", h.foliaVersions)
+	g.Get("/versions/folia/:mcVersion/build/:build/url", h.foliaDownloadURL)
+	g.Get("/versions/neoforge/:mcVersion", h.neoforgeVersions)
+	g.Get("/versions/forge/:mcVersion", h.forgeVersions)
+	g.Get("/versions/quilt/:mcVersion", h.quiltVersions)
+	g.Get("/versions/magma/:mcVersion", h.magmaVersions)
+	g.Get("/versions/spigot", h.spigotInfo)
+
+	g.Post("/server/install", h.installServer)
 }
 
 // ── Server lifecycle ──────────────────────────────────────────────────────────
