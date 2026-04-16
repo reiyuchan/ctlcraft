@@ -309,8 +309,8 @@ export default defineComponent({
             this.isSearchingPlugins = true
             this.searchResults = []
             try {
-                const { tauri } = await import('../api')
-                const results = await tauri.searchPlugins(this.browseQuery)
+                const { api } = await import('../api')
+                const results = await api.searchPlugins(this.browseQuery)
                 this.searchResults = results.map((r: any) => ({
                     ...r,
                     installed: this.store.installedPlugins.some((p: any) => p.id === r.id),
@@ -332,9 +332,9 @@ export default defineComponent({
         quickSearch(q: string): void { this.browseQuery = q; this.doSearch() },
         async installPlugin(result: any): Promise<void> {
             try {
-                const { tauri } = await import('../api')
+                const { api } = await import('../api')
                 this.$emit('toast', { msg: `Downloading ${result.title || result.name}...`, type: 'success' })
-                await tauri.downloadPlugin(result.slug || result.id, undefined, result.source)
+                await api.downloadPlugin(result.slug || result.id, undefined, result.source)
                 const existing = this.store.installedPlugins.find((p: any) => p.id === result.id)
                 if (!existing) {
                     this.store.installedPlugins.push({
@@ -366,8 +366,8 @@ export default defineComponent({
         async doUninstall(): Promise<void> {
             if (!this.confirmTarget) return
             try {
-                const { tauri } = await import('../api')
-                await tauri.deletePlugin(this.confirmTarget.fileName)
+                const { api } = await import('../api')
+                await api.deletePlugin(this.confirmTarget.fileName)
                 this.store.installedPlugins = this.store.installedPlugins.filter((p: any) => p.id !== this.confirmTarget?.id)
                 this.$emit('toast', { msg: `Removed ${this.confirmTarget.name}`, type: 'danger' })
             } catch (e: any) {
@@ -377,9 +377,9 @@ export default defineComponent({
         },
         async openFolder(): Promise<void> {
             try {
-                const { tauri } = await import('../api')
-                const dir = await tauri.getServerDirPath()
-                await tauri.openFolder(`${dir}/plugins`)
+                const { api } = await import('../api')
+                const dir = await api.getServerDirPath()
+                await api.openFolder(`${dir}/plugins`)
             } catch (e: any) {
                 this.$emit('toast', { msg: `Could not open folder: ${e}`, type: 'danger' })
             }

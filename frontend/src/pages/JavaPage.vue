@@ -417,8 +417,8 @@ export default defineComponent({
         },
         async openJavaFolder(java: JavaInstallation): Promise<void> {
             try {
-                const { tauri } = await import('../api')
-                await tauri.openFolder(java.installPath)
+                const { api } = await import('../api')
+                await api.openFolder(java.installPath)
             } catch (e: any) {
                 this.$emit('toast', { msg: `Could not open folder: ${e}`, type: 'danger' })
             }

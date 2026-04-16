@@ -120,13 +120,13 @@ export default {
       this.store.serverStatus = 'starting'
       this.store.addLog('INFO', 'info', 'Starting Minecraft server...')
       try {
-        const { tauri, events } = await import('./api')
+        const { api, events } = await import('./api')
         const unlisten = await events.onServerStopped(() => {
           this.store.serverStatus = 'stopped'
           this.store.addLog('INFO', 'warn', 'Server process exited.')
           unlisten()
         })
-        await tauri.startServer({})
+        await api.startServer({})
         this.store.serverStatus = 'running'
         this.store.addLog('INFO', 'info', 'Server process started successfully.')
         this.showToast({ msg: 'Server started!', type: 'success' })
@@ -138,8 +138,8 @@ export default {
     },
     async stopServer() {
       try {
-        const { tauri } = await import('./api')
-        await tauri.stopServer()
+        const { api } = await import('./api')
+        await api.stopServer()
         this.store.serverStatus = 'stopped'
         this.store.addLog('INFO', 'warn', 'Server stopping...')
         this.showToast({ msg: 'Server stopped.', type: 'warn' })

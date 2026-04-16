@@ -196,5 +196,4 @@ export const events = {
   },
 }
 
-// Re-export as `tauri` for backward compatibility with existing page imports
-export const tauri = api
+
