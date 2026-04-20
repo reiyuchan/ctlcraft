@@ -564,11 +564,11 @@ export default defineComponent({
                 this.store.downloadServerBuild(existing)
             }
             try {
-                const { tauri } = await import('../api')
+                const { api } = await import('../api')
 
                 // Use unified backend install API for all software types
-                await tauri.installServerSoftware(build.software, build.mcVersion, build.build)
-                await tauri.acceptEula()
+                await api.installServerSoftware(build.software, build.mcVersion, build.build)
+                await api.acceptEula()
 
                 this.$emit('toast', { msg: `Downloaded ${build.software} ${build.mcVersion} (build ${build.build})`, type: 'success' })
             } catch (e: any) {
@@ -591,17 +591,17 @@ export default defineComponent({
         },
         async openServerFolder(): Promise<void> {
             try {
-                const { tauri } = await import('../api')
-                await tauri.openServerFolder()
+                const { api } = await import('../api')
+                await api.openServerFolder()
             } catch (e: any) {
                 this.$emit('toast', { msg: `Could not open folder: ${e}`, type: 'danger' })
             }
         },
         async openBuildFolder(_build: ServerBuild): Promise<void> {
             try {
-                const { tauri } = await import('../api')
-                const dir = await tauri.getServerDirPath()
-                await tauri.openFolder(dir)
+                const { api } = await import('../api')
+                const dir = await api.getServerDirPath()
+                await api.openFolder(dir)
             } catch (e: any) {
                 this.$emit('toast', { msg: `Could not open folder: ${e}`, type: 'danger' })
             }

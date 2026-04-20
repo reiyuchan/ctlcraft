@@ -308,11 +308,11 @@ export default defineComponent({
             this.isSearchingMods = true
             this.searchResults = []
             try {
-                const { tauri } = await import('../api')
+                const { api } = await import('../api')
                 const activeBuild = this.store.activeServerBuild
                 const mcVersion = activeBuild?.mcVersion || '1.21'
                 const loader = this.activeLoader !== 'All' ? [this.activeLoader.toLowerCase()] : undefined
-                const results = await tauri.searchMods(this.browseQuery, loader, mcVersion)
+                const results = await api.searchMods(this.browseQuery, loader, mcVersion)
                 this.searchResults = results.map((r: any) => ({
                     ...r,
                     installed: this.store.installedMods.some((m: any) => m.id === r.id),
@@ -334,9 +334,9 @@ export default defineComponent({
         quickSearch(q: string): void { this.browseQuery = q; this.doSearch() },
         async installMod(result: any): Promise<void> {
             try {
-                const { tauri } = await import('../api')
+                const { api } = await import('../api')
                 this.$emit('toast', { msg: `Downloading ${result.title || result.name}...`, type: 'success' })
-                await tauri.downloadMod(result.id)
+                await api.downloadMod(result.id)
                 const existing = this.store.installedMods.find((m: any) => m.id === result.id)
                 if (!existing) {
                     this.store.installedMods.push({
@@ -368,8 +368,8 @@ export default defineComponent({
         async doUninstall(): Promise<void> {
             if (!this.confirmTarget) return
             try {
-                const { tauri } = await import('../api')
-                await tauri.deleteMod(this.confirmTarget.fileName)
+                const { api } = await import('../api')
+                await api.deleteMod(this.confirmTarget.fileName)
                 this.store.installedMods = this.store.installedMods.filter((m: any) => m.id !== this.confirmTarget?.id)
                 this.$emit('toast', { msg: `Removed ${this.confirmTarget.name}`, type: 'danger' })
             } catch (e: any) {
@@ -379,9 +379,9 @@ export default defineComponent({
         },
         async openFolder(): Promise<void> {
             try {
-                const { tauri } = await import('../api')
-                const dir = await tauri.getServerDirPath()
-                await tauri.openFolder(`${dir}/mods`)
+                const { api } = await import('../api')
+                const dir = await api.getServerDirPath()
+                await api.openFolder(`${dir}/mods`)
             } catch (e: any) {
                 this.$emit('toast', { msg: `Could not open folder: ${e}`, type: 'danger' })
             }

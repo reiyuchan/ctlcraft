@@ -118,7 +118,7 @@ export default {
     methods: {
         async saveSettings() {
             try {
-                const { tauri } = await import('../api')
+                const { api } = await import('../api')
                 const props = {
                     server_name: this.store.serverProps.serverName,
                     motd: this.store.serverProps.motd,
@@ -137,7 +137,7 @@ export default {
                     port: this.store.serverProps.port,
                     level_type: this.store.serverProps.levelType,
                 }
-                await tauri.saveServerProps(props)
+                await api.saveServerProps(props)
                 this.$emit('toast', { msg: 'server.properties saved!', type: 'success' })
             } catch (e: any) {
                 this.$emit('toast', { msg: `Save failed: ${e}`, type: 'danger' })
