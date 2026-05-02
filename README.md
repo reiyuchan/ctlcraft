@@ -1,4 +1,4 @@
-# Blocks Launcher
+# ctlcraft
 
 A self-hosted Minecraft server management dashboard with a web UI. Download server JARs, manage server lifecycle, configure `server.properties`, search and install mods/plugins, and stream real-time console output — all through a browser.
 
