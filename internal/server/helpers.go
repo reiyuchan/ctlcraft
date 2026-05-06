@@ -19,7 +19,7 @@ var (
 )
 
 var httpClient = resty.New().
-	SetHeader("User-Agent", "BlocksLauncher/0.1.0").
+	SetHeader("User-Agent", "ctlcraft/0.1.0").
 	SetTimeout(30_000_000_000)
 
 // ── HTTP helpers ───────────────────────────────────────────────────────────
