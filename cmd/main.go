@@ -11,6 +11,12 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	cfg := config.New()
 	app := server.New(cfg)
 
@@ -25,5 +31,5 @@ func main() {
 		os.Exit(0)
 	}()
 
-	log.Fatal(app.Listen())
+	return app.Listen()
 }
