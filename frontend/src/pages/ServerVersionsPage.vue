@@ -389,14 +389,6 @@ const BUILD_CATALOG: Record<string, Record<string, ServerBuild[]>> = {
             makeBuild('Vanilla', '24w46a', 'snapshot', '2024-11-13', 'snapshot', '49.2 MB', 21, 'Snapshot — experimental, not for production'),
         ],
     },
-    Spigot: {
-        '1.21.4': [
-            makeBuild('Spigot', '1.21.4', '4290', '2024-12-15', 'release', '45.0 MB', 21, 'Spigot 1.21.4 — Bukkit API compatible'),
-        ],
-        '1.20.4': [
-            makeBuild('Spigot', '1.20.4', '3869', '2024-01-10', 'release', '43.5 MB', 17, 'Spigot 1.20.4'),
-        ],
-    },
     Purpur: {
         '1.21.4': [
             makeBuild('Purpur', '1.21.4', '2349', '2024-12-20', 'release', '48.1 MB', 21, 'Purpur 1.21.4 — Paper fork with extra config options'),
@@ -437,14 +429,6 @@ const BUILD_CATALOG: Record<string, Record<string, ServerBuild[]>> = {
         ],
         '1.20.4': [
             makeBuild('NeoForge', '1.20.4', '20.4.237', '2024-03-20', 'release', '17.9 MB', 17, 'NeoForge 20.4.237'),
-        ],
-    },
-    Quilt: {
-        '1.21.4': [
-            makeBuild('Quilt', '1.21.4', '0.26.4', '2024-12-10', 'release', '5.1 MB', 21, 'Quilt loader 0.26.4 — Fabric-compatible'),
-        ],
-        '1.20.4': [
-            makeBuild('Quilt', '1.20.4', '0.24.0', '2024-01-18', 'release', '4.8 MB', 17, 'Quilt loader 0.24.0'),
         ],
     },
     Folia: {
