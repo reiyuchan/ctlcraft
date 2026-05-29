@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/spf13/pflag"
 )
@@ -24,11 +25,16 @@ const (
 	JVMFlags = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40"
 )
 
-var CustomPort int
+var (
+	CustomPort   int
+	registerOnce sync.Once
+)
 
 func New() Config {
-	pflag.IntVar(&CustomPort, "port", 0, "sets the server startup port")
-	pflag.Parse()
+	registerOnce.Do(func() {
+		pflag.IntVar(&CustomPort, "port", 0, "sets the server startup port")
+		pflag.Parse()
+	})
 
 	port := CustomPort
 	if port == 0 {
