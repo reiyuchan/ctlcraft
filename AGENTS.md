@@ -19,7 +19,7 @@ cd frontend && npm test                                        # Frontend tests
 
 ```sh
 go vet ./...                                                   # Go vet
-cd frontend && npm run lint                                    # Frontend lint
+cd frontend && npm run lint                                    # Frontend type-check (vue-tsc)
 ```
 
 ## Code Style
