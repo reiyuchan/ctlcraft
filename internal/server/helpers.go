@@ -22,6 +22,10 @@ var httpClient = resty.New().
 	SetHeader("User-Agent", "ctlcraft/0.1.0").
 	SetTimeout(30_000_000_000)
 
+var downloadClient = resty.New().
+	SetHeader("User-Agent", "ctlcraft/0.1.0").
+	SetTimeout(600_000_000_000) // 10 minutes for large file downloads
+
 // ── HTTP helpers ───────────────────────────────────────────────────────────
 
 func errorResp(c *fiber.Ctx, code int, err error) error {
@@ -257,7 +261,7 @@ func modrinthDownload(projectID, versionID, modsDir string) (string, error) {
 	os.MkdirAll(modsDir, 0o755)
 	outPath := filepath.Join(modsDir, file.Filename)
 
-	resp, err = httpClient.R().SetOutput(outPath).Get(file.URL)
+	resp, err = downloadClient.R().SetOutput(outPath).Get(file.URL)
 	if err != nil {
 		return "", fmt.Errorf("download mod: %w", err)
 	}
@@ -413,7 +417,7 @@ func pluginDownload(slug, version, source, pluginsDir string) (string, error) {
 	}
 
 	outPath := filepath.Join(pluginsDir, filename)
-	resp, err := httpClient.R().SetOutput(outPath).Get(downloadURL)
+	resp, err := downloadClient.R().SetOutput(outPath).Get(downloadURL)
 	if err != nil || !resp.IsSuccess() {
 		return "", errors.New("download failed")
 	}
@@ -571,7 +575,7 @@ func fabricInstall(mcVersion, modsDir string) (string, error) {
 		loader.Maven, loader.Loader.Version, loader.Loader.Version, loader.Loader.Hash)
 	fabricPath := filepath.Join(modsDir, fmt.Sprintf("fabric-%s.jar", loader.Loader.Version))
 
-	resp, err = httpClient.R().SetOutput(fabricPath).Get(jarURL)
+	resp, err = downloadClient.R().SetOutput(fabricPath).Get(jarURL)
 	if err != nil {
 		return "", fmt.Errorf("fabric download: %w", err)
 	}
@@ -581,7 +585,7 @@ func fabricInstall(mcVersion, modsDir string) (string, error) {
 	resp2, _ := httpClient.R().SetResult(&launcher).Get(
 		"https://meta.fabricmc.cn/v2/versions/loader/" + mcVersion + "/" + loader.Loader.Version + "/server/legacy")
 	if resp2.IsSuccess() && launcher.URL != "" {
-		httpClient.R().SetOutput(filepath.Join(modsDir, "fabric-server-launch.jar")).Get(launcher.URL)
+		downloadClient.R().SetOutput(filepath.Join(modsDir, "fabric-server-launch.jar")).Get(launcher.URL)
 	}
 
 	return fabricPath, nil
@@ -696,7 +700,7 @@ func adoptiumDownload(version, installDir string) (string, error) {
 	filename := fmt.Sprintf("jdk-%s.%s", version, ext)
 	outPath := filepath.Join(installDir, filename)
 
-	resp, err = httpClient.R().SetOutput(outPath).Get(link)
+	resp, err = downloadClient.R().SetOutput(outPath).Get(link)
 	if err != nil {
 		return "", fmt.Errorf("download java: %w", err)
 	}

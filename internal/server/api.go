@@ -127,7 +127,7 @@ func (h Handler) downloadJar(c *fiber.Ctx) error {
 	if err := c.BodyParser(&body); err != nil {
 		return errorResp(c, 400, err)
 	}
-	path, err := downloadFile(httpClient, body.URL, filePath(h.cfg.ServerDir, "server.jar"))
+	path, err := downloadFile(downloadClient, body.URL, filePath(h.cfg.ServerDir, "server.jar"))
 	if err != nil {
 		return errorResp(c, 500, err)
 	}
