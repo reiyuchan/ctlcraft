@@ -498,24 +498,20 @@ export const store = reactive<Store>({
 
   async fetchJavaInstallations(): Promise<void> {
     try {
-      const paths = await api.detectJava()
-      this.javaInstallations = paths.map((p, i) => {
-        const match = p.match(/Java (\d+)/)
-        const majorVersion = match ? parseInt(match[1]) : 0
-        return {
-          id: `java-${i}`,
-          vendor: 'Adoptium' as JavaVendor,
-          majorVersion,
-          fullVersion: p,
-          latestVersion: p,
-          arch: 'x64' as JavaArch,
-          installPath: p,
-          sizeOnDisk: '',
-          status: 'installed' as JavaInstallStatus,
-          isActive: i === 0,
-          releaseType: majorVersion >= 17 ? 'LTS' as const : 'STS' as const,
-        }
-      })
+      const runtimes = await api.detectJava()
+      this.javaInstallations = runtimes.map((r, i) => ({
+        id: r.id,
+        vendor: r.vendor as JavaVendor,
+        majorVersion: r.majorVersion,
+        fullVersion: r.fullVersion,
+        latestVersion: r.latestVersion,
+        arch: r.arch as JavaArch,
+        installPath: r.installPath,
+        sizeOnDisk: r.sizeOnDisk,
+        status: r.status as JavaInstallStatus,
+        isActive: i === 0,
+        releaseType: r.releaseType as 'LTS' | 'STS',
+      }))
     } catch {
       this.javaInstallations = []
     }

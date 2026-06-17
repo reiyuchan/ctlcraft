@@ -196,34 +196,11 @@ func (h Handler) sendCommand(c *fiber.Ctx) error {
 // ── Java ─────────────────────────────────────────────────────────────────────
 
 func (h Handler) detectJava(c *fiber.Ctx) error {
-	paths := javaSearchPaths()
-	seen := make(map[string]bool)
-	var results []string
-
-	for _, p := range paths {
-		if p == "" {
-			continue
-		}
-		entries, err := os.ReadDir(p)
-		if err != nil {
-			continue
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
-			}
-			javaBin := javaBinPath(p, entry.Name())
-			if existsFile(javaBin) && !seen[javaBin] {
-				seen[javaBin] = true
-				results = append(results, javaVersion(javaBin))
-			}
-		}
+	runtimes := detectJavaRuntimes(filepath.Join(h.cfg.DataDir, "java"))
+	if runtimes == nil {
+		runtimes = []javaInstallation{}
 	}
-
-	if len(results) == 0 {
-		results = []string{"No Java installation found"}
-	}
-	return c.JSON(results)
+	return c.JSON(runtimes)
 }
 
 func (h Handler) javaVersions(c *fiber.Ctx) error {

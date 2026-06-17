@@ -74,6 +74,20 @@ export interface VanillaVersion {
   id: string; type: string; url: string
 }
 
+export interface JavaInstallation {
+  id: string
+  vendor: string
+  majorVersion: number
+  fullVersion: string
+  latestVersion: string
+  arch: string
+  installPath: string
+  sizeOnDisk: string
+  status: string
+  isActive: boolean
+  releaseType: string
+}
+
 // ── API Interface ────────────────────────────────────────────────────────────
 
 export const api = {
@@ -92,7 +106,7 @@ export const api = {
   getActiveInfo: () => apiFetch<ServerInfo>('/api/server/info'),
 
   // Java
-  detectJava: () => apiFetch<string[]>('/api/java/detect'),
+  detectJava: () => apiFetch<JavaInstallation[]>('/api/java/detect'),
   javaVersions: () => apiFetch<{ version: number; lts: boolean }[]>('/api/java/versions'),
   downloadJava: (version: string) =>
     apiFetch<{ path: string }>('/api/java/download', { method: 'POST', body: JSON.stringify({ version }) }),

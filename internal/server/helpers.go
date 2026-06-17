@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/go-resty/resty/v2"
@@ -24,7 +25,7 @@ var httpClient = resty.New().
 
 var downloadClient = resty.New().
 	SetHeader("User-Agent", "ctlcraft/0.1.0").
-	SetTimeout(600_000_000_000) // 10 minutes for large file downloads
+	SetTimeout(0) // no timeout — TCP keepalive handles dead connections
 
 // ── HTTP helpers ───────────────────────────────────────────────────────────
 
@@ -66,45 +67,202 @@ type startOpts struct {
 
 // ── Java detection ────────────────────────────────────────────────────────
 
-func javaSearchPaths() []string {
-	var paths []string
-	if jh := os.Getenv("JAVA_HOME"); jh != "" {
-		paths = append(paths, jh)
-	}
-	paths = append(paths,
+type javaInstallation struct {
+	ID           string `json:"id"`
+	Vendor       string `json:"vendor"`
+	MajorVersion int    `json:"majorVersion"`
+	FullVersion  string `json:"fullVersion"`
+	LatestVersion string `json:"latestVersion"`
+	Arch         string `json:"arch"`
+	InstallPath  string `json:"installPath"`
+	SizeOnDisk   string `json:"sizeOnDisk"`
+	Status       string `json:"status"`
+	IsActive     bool   `json:"isActive"`
+	ReleaseType  string `json:"releaseType"`
+}
+
+func detectJavaRuntimes(javaDir string) []javaInstallation {
+	seen := make(map[string]bool)
+	var runtimes []javaInstallation
+
+	// System paths
+	paths := []string{
+		os.Getenv("JAVA_HOME"),
 		"/usr/lib/jvm",
 		"/opt/java",
 		"/opt/openjdk",
+		"/usr/local/opt/openjdk",
 		"C:\\Program Files\\Java",
 		"C:\\Program Files\\Eclipse Adoptium",
 		"C:\\Program Files\\Amazon Corretto",
-	)
-	return paths
+	}
+	for _, dir := range paths {
+		if dir == "" {
+			continue
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			bin := filepath.Join(dir, e.Name(), "bin", "java")
+			if runtime.GOOS == "windows" {
+				bin += ".exe"
+			}
+			if existsFile(bin) && !seen[bin] {
+				seen[bin] = true
+				info := readJavaInfo(bin)
+				info.ID = fmt.Sprintf("sys-%d", len(runtimes))
+				info.InstallPath = bin
+				runtimes = append(runtimes, info)
+			}
+		}
+	}
+
+	// Downloaded runtimes
+	if javaDir != "" {
+		entries, err := os.ReadDir(javaDir)
+		if err == nil {
+			for _, e := range entries {
+				if !e.IsDir() {
+					continue
+				}
+				bin := findJavaBin(filepath.Join(javaDir, e.Name()))
+				if bin != "" && !seen[bin] {
+					seen[bin] = true
+					info := readJavaInfo(bin)
+					info.ID = fmt.Sprintf("dl-%d", len(runtimes))
+					info.InstallPath = bin
+					if size, err := dirSize(filepath.Dir(filepath.Dir(bin))); err == nil {
+						info.SizeOnDisk = formatBytes(size)
+					}
+					runtimes = append(runtimes, info)
+				}
+			}
+		}
+	}
+
+	return runtimes
 }
 
-func javaBinPath(base, name string) string {
-	java := filepath.Join(base, name, "bin", "java")
+func findJavaBin(dir string) string {
+	bin := filepath.Join(dir, "bin", "java")
 	if runtime.GOOS == "windows" {
-		java += ".exe"
+		bin += ".exe"
 	}
-	return java
+	if existsFile(bin) {
+		return bin
+	}
+	// Check one level deeper (Adoptium tarballs have a nested dir)
+	subs, err := os.ReadDir(dir)
+	if err != nil {
+		return ""
+	}
+	for _, s := range subs {
+		if !s.IsDir() {
+			continue
+		}
+		bin = filepath.Join(dir, s.Name(), "bin", "java")
+		if runtime.GOOS == "windows" {
+			bin += ".exe"
+		}
+		if existsFile(bin) {
+			return bin
+		}
+	}
+	return ""
 }
 
-func javaVersion(javaBin string) string {
+func readJavaInfo(javaBin string) javaInstallation {
 	out, _ := exec.Command(javaBin, "-version").CombinedOutput()
-	lines := strings.SplitN(string(out), "\n", 2)
-	ver := lines[0]
-	if len(lines) > 1 {
-		ver = strings.Join(lines[:min(2, len(lines))], " | ")
+	output := string(out)
+	lines := strings.SplitN(output, "\n", 3)
+
+	verLine := ""
+	if len(lines) > 0 {
+		verLine = strings.TrimSpace(lines[0])
 	}
-	return fmt.Sprintf("%s: %s", javaBin, ver)
+	fullVersion := verLine
+	if len(lines) > 1 {
+		fullVersion = verLine + " | " + strings.TrimSpace(lines[1])
+	}
+
+	majorVersion := 0
+	if idx := strings.Index(verLine, `version "`); idx >= 0 {
+		rest := verLine[idx+len(`version "`):]
+		if end := strings.Index(rest, `"`); end >= 0 {
+			verStr := rest[:end]
+			parts := strings.SplitN(verStr, ".", 2)
+			if v, err := strconv.Atoi(parts[0]); err == nil {
+				majorVersion = v
+				if majorVersion == 1 && len(parts) > 1 {
+					if parts2 := strings.SplitN(parts[1], ".", 2); len(parts2) > 0 {
+						if v2, err := strconv.Atoi(parts2[0]); err == nil {
+							majorVersion = v2
+						}
+					}
+				}
+			}
+		}
+	}
+
+	vendor := "OpenJDK"
+	low := strings.ToLower(output)
+	switch {
+	case strings.Contains(low, " adoptium") || strings.Contains(low, "adoptium") || strings.Contains(low, "temurin"):
+		vendor = "Adoptium"
+	case strings.Contains(low, "corretto"):
+		vendor = "Amazon Corretto"
+	case strings.Contains(low, "zulu"):
+		vendor = "Azul Zulu"
+	case strings.Contains(low, "java(tm)") || strings.Contains(low, "hotspot"):
+		vendor = "Oracle"
+	case strings.Contains(low, "openj9"):
+		vendor = "IBM Semeru"
+	case strings.Contains(low, "microsoft"):
+		vendor = "Microsoft"
+	}
+
+	arch := runtime.GOARCH
+	switch {
+	case strings.Contains(output, "AArch64") || strings.Contains(output, "aarch64"):
+		arch = "aarch64"
+	case strings.Contains(output, "64-Bit"):
+		arch = "x64"
+	case strings.Contains(output, "32-Bit"):
+		arch = "x32"
+	}
+
+	releaseType := "STS"
+	if majorVersion >= 17 || strings.Contains(output, "LTS") || strings.Contains(low, "lts") {
+		releaseType = "LTS"
+	}
+
+	return javaInstallation{
+		Vendor:       vendor,
+		MajorVersion: majorVersion,
+		FullVersion:  fullVersion,
+		Arch:         arch,
+		Status:       "installed",
+		ReleaseType:  releaseType,
+	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+func dirSize(path string) (int64, error) {
+	var total int64
+	err := filepath.Walk(path, func(_ string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !fi.IsDir() {
+			total += fi.Size()
+		}
+		return nil
+	})
+	return total, err
 }
 
 // ── Folder ────────────────────────────────────────────────────────────────
