@@ -714,6 +714,7 @@ func adoptiumDownload(version, installDir string) (string, error) {
 	}
 
 	extractPath := filepath.Join(installDir, fmt.Sprintf("jdk-%s", version))
+	os.MkdirAll(extractPath, 0o755)
 	if err := untargz(outPath, extractPath); err != nil {
 		return "", fmt.Errorf("extract: %w", err)
 	}

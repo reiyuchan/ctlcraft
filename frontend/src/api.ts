@@ -93,6 +93,9 @@ export const api = {
 
   // Java
   detectJava: () => apiFetch<string[]>('/api/java/detect'),
+  javaVersions: () => apiFetch<{ version: number; lts: boolean }[]>('/api/java/versions'),
+  downloadJava: (version: string) =>
+    apiFetch<{ path: string }>('/api/java/download', { method: 'POST', body: JSON.stringify({ version }) }),
 
   // Folders
   openFolder: (path: string) => apiVoid('/api/folder/open', { method: 'POST', body: JSON.stringify({ path }) }),

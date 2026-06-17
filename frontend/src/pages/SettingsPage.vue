@@ -49,6 +49,7 @@
 </template>
 
 <script lang="ts">
+import { api } from '../api.js'
 import { store } from '../store.js'
 
 const DEFAULT_PROPS = {
@@ -115,10 +116,12 @@ export default {
             ],
         }
     },
+    mounted() {
+        store.fetchServerProps()
+    },
     methods: {
         async saveSettings() {
             try {
-                const { api } = await import('../api')
                 const props = {
                     server_name: this.store.serverProps.serverName,
                     motd: this.store.serverProps.motd,

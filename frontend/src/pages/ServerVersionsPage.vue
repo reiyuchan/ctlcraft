@@ -284,15 +284,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { store } from '../store'
-import type { ServerBuild, ServerSoftware, ServerSoftwareMeta, ReleaseChannel } from '../store'
-
-// ── Static catalog ────────────────────────────────────────────────────────────
-// In production, swap these with real API calls:
-//   Paper:    https://api.papermc.io/v2/projects/paper
-//   Spigot:   https://hub.spigotmc.org/versions
-//   Fabric:   https://meta.fabricmc.net/v2/versions/loader
-//   Forge:    https://files.minecraftforge.net/net/minecraftforge/forge
-//   Vanilla:  https://launchermeta.mojang.com/mc/game/version_manifest.json
+import { api } from '../api'
+import type { ServerBuild, ServerSoftware, ServerSoftwareMeta, ReleaseChannel, ServerVersionStatus } from '../store'
 
 const MC_VERSIONS: { version: string; releaseDate: string; channel: ReleaseChannel }[] = [
     { version: '1.21.4', releaseDate: '2024-12-03', channel: 'release' },
@@ -313,160 +306,6 @@ const MC_VERSIONS: { version: string; releaseDate: string; channel: ReleaseChann
     { version: '25w02a', releaseDate: '2025-01-08', channel: 'snapshot' },
     { version: '24w46a', releaseDate: '2024-11-13', channel: 'snapshot' },
 ]
-
-// Generate mock build catalog per software+version
-function makeBuild(
-    software: ServerSoftware,
-    mcVersion: string,
-    buildNum: string,
-    releaseDate: string,
-    channel: ReleaseChannel,
-    fileSize: string,
-    javaRequired: number,
-    changelog: string,
-): ServerBuild {
-    return {
-        id: `${software.toLowerCase()}-${mcVersion}-${buildNum}`,
-        software,
-        mcVersion,
-        build: buildNum,
-        releaseDate,
-        channel,
-        fileSize,
-        sha256: Math.random().toString(16).slice(2).padEnd(64, '0'),
-        changelog,
-        javaRequired,
-        status: 'available',
-        isActive: false,
-        downloadUrl: '',
-    }
-}
-
-const BUILD_CATALOG: Record<string, Record<string, ServerBuild[]>> = {
-    Paper: {
-        '1.21.4': [
-            makeBuild('Paper', '1.21.4', '139', '2024-12-18', 'release', '47.2 MB', 21, 'Fix entity tracking desync, improve chunk loading, patch dupe exploit'),
-            makeBuild('Paper', '1.21.4', '138', '2024-12-14', 'release', '47.1 MB', 21, 'Chunk system improvements, reduce memory usage on low-pop servers'),
-            makeBuild('Paper', '1.21.4', '137', '2024-12-10', 'release', '47.0 MB', 21, 'Backport upstream Vanilla fixes, async region stabilisation'),
-        ],
-        '1.21.3': [
-            makeBuild('Paper', '1.21.3', '101', '2024-11-15', 'release', '46.8 MB', 21, 'Security patches, perf improvements for large servers'),
-            makeBuild('Paper', '1.21.3', '100', '2024-11-10', 'release', '46.7 MB', 21, 'Fix bed explosions in End, hoppers, scoreboard API'),
-        ],
-        '1.21.1': [
-            makeBuild('Paper', '1.21.1', '56', '2024-08-22', 'release', '46.2 MB', 21, 'Arrow fix, item dupe patch, fisherman AI'),
-        ],
-        '1.20.4': [
-            makeBuild('Paper', '1.20.4', '499', '2024-03-01', 'release', '44.9 MB', 17, 'Last stable 1.20.4 release — recommended for legacy servers'),
-        ],
-        '1.19.4': [
-            makeBuild('Paper', '1.19.4', '550', '2023-06-01', 'release', '43.1 MB', 17, 'Warden AI, chunk perf, API additions'),
-        ],
-        '1.16.5': [
-            makeBuild('Paper', '1.16.5', '794', '2021-05-10', 'release', '38.0 MB', 11, 'Long-term support release for 1.16'),
-        ],
-    },
-    Vanilla: {
-        '1.21.4': [
-            makeBuild('Vanilla', '1.21.4', 'release', '2024-12-03', 'release', '49.1 MB', 21, 'Official Mojang server release'),
-        ],
-        '1.21.3': [
-            makeBuild('Vanilla', '1.21.3', 'release', '2024-11-04', 'release', '48.9 MB', 21, 'Official Mojang server release'),
-        ],
-        '1.20.4': [
-            makeBuild('Vanilla', '1.20.4', 'release', '2023-12-07', 'release', '47.2 MB', 17, 'Official Mojang server release'),
-        ],
-        '1.19.2': [
-            makeBuild('Vanilla', '1.19.2', 'release', '2022-08-05', 'release', '44.1 MB', 17, 'Official Mojang server release'),
-        ],
-        '1.12.2': [
-            makeBuild('Vanilla', '1.12.2', 'release', '2017-09-18', 'release', '34.0 MB', 8, 'Legacy release — Java 8 required'),
-        ],
-        '25w02a': [
-            makeBuild('Vanilla', '25w02a', 'snapshot', '2025-01-08', 'snapshot', '49.5 MB', 21, 'Snapshot — experimental, not for production'),
-        ],
-        '24w46a': [
-            makeBuild('Vanilla', '24w46a', 'snapshot', '2024-11-13', 'snapshot', '49.2 MB', 21, 'Snapshot — experimental, not for production'),
-        ],
-    },
-    Purpur: {
-        '1.21.4': [
-            makeBuild('Purpur', '1.21.4', '2349', '2024-12-20', 'release', '48.1 MB', 21, 'Purpur 1.21.4 — Paper fork with extra config options'),
-            makeBuild('Purpur', '1.21.4', '2348', '2024-12-16', 'release', '48.0 MB', 21, 'Mob riding config, rideable entities, performance tweaks'),
-        ],
-        '1.20.4': [
-            makeBuild('Purpur', '1.20.4', '2132', '2024-02-01', 'release', '46.2 MB', 17, 'Purpur 1.20.4'),
-        ],
-    },
-    Fabric: {
-        '1.21.4': [
-            makeBuild('Fabric', '1.21.4', '0.16.9', '2024-12-05', 'release', '4.2 MB', 21, 'Fabric loader 0.16.9 for Minecraft 1.21.4'),
-            makeBuild('Fabric', '1.21.4', '0.16.8', '2024-11-20', 'release', '4.1 MB', 21, 'Fabric loader 0.16.8 — stability improvements'),
-        ],
-        '1.21.1': [
-            makeBuild('Fabric', '1.21.1', '0.16.5', '2024-08-15', 'release', '4.0 MB', 21, 'Fabric loader 0.16.5'),
-        ],
-        '1.20.4': [
-            makeBuild('Fabric', '1.20.4', '0.15.11', '2024-01-12', 'release', '3.9 MB', 17, 'Fabric loader 0.15.11'),
-        ],
-    },
-    Forge: {
-        '1.21.4': [
-            makeBuild('Forge', '1.21.4', '54.0.16', '2024-12-12', 'release', '18.3 MB', 21, 'MinecraftForge 54.0.16'),
-            makeBuild('Forge', '1.21.4', '54.0.14', '2024-12-01', 'release', '18.1 MB', 21, 'MinecraftForge 54.0.14 — initial 1.21.4 support'),
-        ],
-        '1.20.4': [
-            makeBuild('Forge', '1.20.4', '49.2.0', '2024-03-15', 'release', '17.6 MB', 17, 'MinecraftForge 49.2.0'),
-        ],
-        '1.12.2': [
-            makeBuild('Forge', '1.12.2', '14.23.5.2859', '2019-12-31', 'release', '11.4 MB', 8, 'Forge legacy LTS — most 1.12.2 modpacks'),
-        ],
-    },
-    NeoForge: {
-        '1.21.4': [
-            makeBuild('NeoForge', '1.21.4', '21.4.70', '2024-12-14', 'release', '18.8 MB', 21, 'NeoForge 21.4.70 — recommended'),
-            makeBuild('NeoForge', '1.21.4', '21.4.65', '2024-12-07', 'release', '18.7 MB', 21, 'NeoForge 21.4.65'),
-        ],
-        '1.20.4': [
-            makeBuild('NeoForge', '1.20.4', '20.4.237', '2024-03-20', 'release', '17.9 MB', 17, 'NeoForge 20.4.237'),
-        ],
-    },
-    Folia: {
-        '1.21.4': [
-            makeBuild('Folia', '1.21.4', '28', '2024-12-22', 'release', '50.1 MB', 21, 'Folia — region-based multithreading for large servers'),
-            makeBuild('Folia', '1.21.4', '27', '2024-12-18', 'release', '50.0 MB', 21, 'Region scheduling improvements, bug fixes'),
-        ],
-        '1.20.4': [
-            makeBuild('Folia', '1.20.4', '18', '2024-02-10', 'release', '47.8 MB', 17, 'Folia 1.20.4'),
-        ],
-    },
-    Magma: {
-        '1.21.4': [
-            makeBuild('Magma', '1.21.4', '28', '2024-12-22', 'release', '50.1 MB', 21, 'Magma 1.21.4 — hybrid Forge + Bukkit server'),
-        ],
-        '1.20.4': [
-            makeBuild('Magma', '1.20.4', '18', '2024-02-10', 'release', '47.8 MB', 17, 'Magma 1.20.4'),
-        ],
-    },
-    Spigot: {
-        '1.21.4': [
-            makeBuild('Spigot', '1.21.4', '4290', '2024-12-15', 'release', '45.0 MB', 21, 'Spigot 1.21.4 — Bukkit API compatible'),
-            makeBuild('Spigot', '1.21.4', '4289', '2024-12-10', 'release', '44.9 MB', 21, 'Bug fixes, performance improvements'),
-        ],
-        '1.20.4': [
-            makeBuild('Spigot', '1.20.4', '3869', '2024-01-10', 'release', '43.5 MB', 17, 'Spigot 1.20.4'),
-        ],
-    },
-    Quilt: {
-        '1.21.4': [
-            makeBuild('Quilt', '1.21.4', '0.26.4', '2024-12-10', 'release', '5.1 MB', 21, 'Quilt loader 0.26.4 — Fabric-compatible'),
-            makeBuild('Quilt', '1.21.4', '0.26.3', '2024-12-01', 'release', '5.0 MB', 21, 'Quilt loader 0.26.3'),
-        ],
-        '1.20.4': [
-            makeBuild('Quilt', '1.20.4', '0.24.0', '2024-01-18', 'release', '4.8 MB', 17, 'Quilt loader 0.24.0'),
-        ],
-    },
-}
 
 const SOFTWARE_META: Record<ServerSoftware, ServerSoftwareMeta> = {
     Paper: { id: 'Paper', name: 'Paper', icon: '📄', description: 'High-performance Paper server — best plugin compatibility and optimizations.', type: 'plugin', recommendedFor: 'Recommended for most servers', color: '#f87171' },
@@ -495,6 +334,8 @@ export default defineComponent({
             confirmDelete: null as ServerBuild | null,
             softwareMeta: SOFTWARE_META,
             softwareList: Object.values(SOFTWARE_META),
+            currentBuilds: [] as ServerBuild[],
+            isLoadingBuilds: false,
         }
     },
 
@@ -506,22 +347,31 @@ export default defineComponent({
             return this.activeBuild ? this.softwareSlug(this.activeBuild.software) : 'none'
         },
         filteredMcVersions() {
-            const catalog = this.selectedSoftware ? (BUILD_CATALOG[this.selectedSoftware] ?? {}) : {}
-            const availableVersions = new Set(Object.keys(catalog))
             return MC_VERSIONS.filter(v => {
-                const inCatalog = availableVersions.has(v.version)
-                const matchChannel = this.channelFilter === 'All' || v.channel === this.channelFilter
-                return inCatalog && matchChannel
+                return this.channelFilter === 'All' || v.channel === this.channelFilter
             })
         },
-        currentBuilds(): ServerBuild[] {
-            if (!this.selectedSoftware || !this.selectedMcVersion) return []
-            const catalog = BUILD_CATALOG[this.selectedSoftware]?.[this.selectedMcVersion] ?? []
-            // Merge status from store
-            return catalog.map(b => {
-                const stored = this.store.serverBuilds.find(s => s.id === b.id)
-                return stored ?? b
-            })
+    },
+
+    watch: {
+        selectedSoftware: {
+            handler() { this.selectedMcVersion = ''; this.currentBuilds = [] },
+        },
+        async selectedMcVersion(version: string) {
+            if (!version || !this.selectedSoftware) return
+            this.isLoadingBuilds = true
+            this.currentBuilds = []
+            try {
+                const builds = await this.fetchBuilds(this.selectedSoftware, version)
+                this.currentBuilds = builds.map((b: any) => ({
+                    ...b,
+                    status: this.store.serverBuilds.find(s => s.id === b.id)?.status ?? 'available',
+                }))
+            } catch {
+                this.currentBuilds = []
+            } finally {
+                this.isLoadingBuilds = false
+            }
         },
     },
 
@@ -538,25 +388,55 @@ export default defineComponent({
         hasCompatibleJava(required: number): boolean {
             return this.store.javaInstallations.some(j => j.majorVersion >= required && j.status !== 'error')
         },
-        async downloadBuild(build: ServerBuild): Promise<void> {
-            const existing = this.store.serverBuilds.find(b => b.id === build.id)
-            if (!existing) {
-                this.store.serverBuilds.push({ ...build })
-                const stored = this.store.serverBuilds[this.store.serverBuilds.length - 1]
-                this.store.downloadServerBuild(stored)
-            } else {
-                this.store.downloadServerBuild(existing)
-            }
+        async fetchBuilds(software: string, mcVersion: string): Promise<ServerBuild[]> {
+            const now = new Date().toISOString().slice(0, 10)
             try {
-                const { api } = await import('../api')
-
-                // Use unified backend install API for all software types
-                await api.installServerSoftware(build.software, build.mcVersion, build.build)
-                await api.acceptEula()
-
+                switch (software) {
+                    case 'Paper': {
+                        const builds: number[] = await api.getPaperBuilds(mcVersion)
+                        return builds.map(b => ({
+                            id: `paper-${mcVersion}-${b}`,
+                            software: 'Paper' as ServerSoftware,
+                            mcVersion,
+                            build: String(b),
+                            releaseDate: now,
+                            channel: 'release' as ReleaseChannel,
+                            fileSize: '',
+                            sha256: '',
+                            changelog: `Paper build #${b} for ${mcVersion}`,
+                            javaRequired: 21,
+                            status: 'available' as ServerVersionStatus,
+                            isActive: false,
+                            downloadUrl: '',
+                        }))
+                    }
+                    default:
+                        return [{
+                            id: `${software.toLowerCase()}-${mcVersion}-1`,
+                            software: software as ServerSoftware,
+                            mcVersion,
+                            build: 'latest',
+                            releaseDate: now,
+                            channel: 'release' as ReleaseChannel,
+                            fileSize: '',
+                            sha256: '',
+                            changelog: `${software} ${mcVersion}`,
+                            javaRequired: 17,
+                            status: 'available' as ServerVersionStatus,
+                            isActive: false,
+                            downloadUrl: '',
+                        }]
+                }
+            } catch {
+                return []
+            }
+        },
+        async downloadBuild(build: ServerBuild): Promise<void> {
+            try {
+                await store.downloadServerBuild(build.software, build.mcVersion, build.build)
                 this.$emit('toast', { msg: `Downloaded ${build.software} ${build.mcVersion} (build ${build.build})`, type: 'success' })
             } catch (e: any) {
-                this.$emit('toast', { msg: `Download failed: ${e}`, type: 'danger' })
+                this.$emit('toast', { msg: `Download failed: ${e.message ?? e}`, type: 'danger' })
             }
         },
         setActive(build: ServerBuild): void {
@@ -575,7 +455,6 @@ export default defineComponent({
         },
         async openServerFolder(): Promise<void> {
             try {
-                const { api } = await import('../api')
                 await api.openServerFolder()
             } catch (e: any) {
                 this.$emit('toast', { msg: `Could not open folder: ${e}`, type: 'danger' })
@@ -583,13 +462,16 @@ export default defineComponent({
         },
         async openBuildFolder(_build: ServerBuild): Promise<void> {
             try {
-                const { api } = await import('../api')
                 const dir = await api.getServerDirPath()
                 await api.openFolder(dir)
             } catch (e: any) {
                 this.$emit('toast', { msg: `Could not open folder: ${e}`, type: 'danger' })
             }
         },
+    },
+
+    mounted() {
+        store.fetchServerBuilds()
     },
 })
 </script>

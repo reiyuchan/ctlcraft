@@ -249,19 +249,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
+import { api } from '../api'
 import { store } from '../store'
 import type { InstalledPlugin, PluginSearchResult, PluginLoaderType, ItemStatus } from '../store'
-
-const MOCK_PLUGIN_RESULTS: PluginSearchResult[] = [
-    { id: 'essentialsx', name: 'EssentialsX', author: 'EssentialsX Team', description: 'The essential plugin suite for Spigot/Paper servers.', category: 'Utility', downloads: '80M', latestVersion: '2.21.0', loaders: ['Paper', 'Spigot'], source: 'Hangar', icon: '🔧', installed: false },
-    { id: 'worldguard', name: 'WorldGuard', author: 'sk89q', description: 'Powerful world protection and management plugin.', category: 'Protection', downloads: '70M', latestVersion: '7.0.9', loaders: ['Paper'], source: 'CurseForge', icon: '🛡', installed: false },
-    { id: 'vault', name: 'Vault', author: 'MilkBowl', description: 'Economy, chat, and permissions API for Bukkit plugins.', category: 'Economy', downloads: '62M', latestVersion: '1.7.3', loaders: ['Paper', 'Spigot'], source: 'CurseForge', icon: '💰', installed: false },
-    { id: 'luckperms', name: 'LuckPerms', author: 'Luck', description: 'A permissions plugin for Minecraft servers.', category: 'Admin', downloads: '55M', latestVersion: '5.4.108', loaders: ['Paper', 'Spigot'], source: 'Modrinth', icon: '🔑', installed: false },
-    { id: 'coreprotect', name: 'CoreProtect', author: 'Playhive', description: 'Fast, reliable data logging and anti-griefing tool.', category: 'Admin', downloads: '9M', latestVersion: '22.4', loaders: ['Paper'], source: 'Hangar', icon: '🔍', installed: false },
-    { id: 'dynmap', name: 'Dynmap', author: 'webbukkit', description: 'Real-time web-based map of your Minecraft world.', category: 'Utility', downloads: '28M', latestVersion: '3.7', loaders: ['Paper', 'Spigot'], source: 'CurseForge', icon: '🗺', installed: false },
-    { id: 'chunky-plugin', name: 'Chunky', author: 'pop4959', description: 'Pre-generates chunks quickly and efficiently.', category: 'Utility', downloads: '12M', latestVersion: '1.3.94', loaders: ['Paper'], source: 'Modrinth', icon: '🗺', installed: false },
-    { id: 'shopguiplus', name: 'ShopGUI+', author: 'brc-dev', description: 'Advanced shop GUI with support for many economy plugins.', category: 'Economy', downloads: '4M', latestVersion: '1.91.0', loaders: ['Paper', 'Spigot'], source: 'CurseForge', icon: '🏪', installed: false },
-]
 
 export default defineComponent({
     name: 'PluginsPage',
@@ -309,7 +299,6 @@ export default defineComponent({
             this.isSearchingPlugins = true
             this.searchResults = []
             try {
-                const { api } = await import('../api')
                 const results = await api.searchPlugins(this.browseQuery)
                 this.searchResults = results.map((r: any) => ({
                     ...r,
@@ -318,8 +307,6 @@ export default defineComponent({
                 }))
             } catch (e: any) {
                 this.$emit('toast', { msg: `Search failed: ${e}`, type: 'danger' })
-                const hydrated = MOCK_PLUGIN_RESULTS.map(r => ({ ...r, installed: this.store.installedPlugins.some((p: any) => p.id === r.id) }))
-                this.searchResults = hydrated
             } finally {
                 this.isSearchingPlugins = false
             }
@@ -332,7 +319,6 @@ export default defineComponent({
         quickSearch(q: string): void { this.browseQuery = q; this.doSearch() },
         async installPlugin(result: any): Promise<void> {
             try {
-                const { api } = await import('../api')
                 this.$emit('toast', { msg: `Downloading ${result.title || result.name}...`, type: 'success' })
                 await api.downloadPlugin(result.slug || result.id, undefined, result.source)
                 const existing = this.store.installedPlugins.find((p: any) => p.id === result.id)
@@ -366,7 +352,6 @@ export default defineComponent({
         async doUninstall(): Promise<void> {
             if (!this.confirmTarget) return
             try {
-                const { api } = await import('../api')
                 await api.deletePlugin(this.confirmTarget.fileName)
                 this.store.installedPlugins = this.store.installedPlugins.filter((p: any) => p.id !== this.confirmTarget?.id)
                 this.$emit('toast', { msg: `Removed ${this.confirmTarget.name}`, type: 'danger' })
@@ -377,7 +362,6 @@ export default defineComponent({
         },
         async openFolder(): Promise<void> {
             try {
-                const { api } = await import('../api')
                 const dir = await api.getServerDirPath()
                 await api.openFolder(`${dir}/plugins`)
             } catch (e: any) {
@@ -386,7 +370,9 @@ export default defineComponent({
         },
         checkUpdates(): void {
             this.$emit('toast', { msg: 'Checking for updates...', type: 'success' })
-            setTimeout(() => this.$emit('toast', { msg: `${this.updatesAvailable} update(s) available`, type: this.updatesAvailable > 0 ? 'warn' : 'success' }), 1200)
+            this.store.fetchInstalledPlugins().then(() => {
+                this.$emit('toast', { msg: `${this.updatesAvailable} update(s) available`, type: this.updatesAvailable > 0 ? 'warn' : 'success' })
+            })
         },
         handleDrop(e: DragEvent): void {
             this.isDragging = false
@@ -395,12 +381,15 @@ export default defineComponent({
             jars.forEach(f => { this.$emit('toast', { msg: `Installing ${f.name}...`, type: 'success' }); this.store.addLog('INFO', 'info', `Local plugin install: ${f.name}`) })
         },
         switchToPlugins(): void {
-            const modNames = this.store.installedMods.map(m => m.name).join(', ')
             this.store.installedMods = []
             this.store.installedModLoader = null
-            this.store.addLog('INFO', 'warn', `Removed mod loader and mods to switch to plugin server: ${modNames}`)
+            this.store.addLog('INFO', 'warn', 'Removed mod loader and mods to switch to plugin server')
             this.$emit('toast', { msg: 'Switched to plugin server mode', type: 'success' })
         },
+    },
+
+    mounted() {
+        store.fetchInstalledPlugins()
     },
 })
 </script>

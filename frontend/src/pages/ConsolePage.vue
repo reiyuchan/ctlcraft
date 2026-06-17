@@ -34,6 +34,7 @@
 </template>
 
 <script>
+import { api } from '../api.js'
 import { store } from '../store.js'
 
 export default {
@@ -57,13 +58,18 @@ export default {
         },
     },
     methods: {
-        sendCommand() {
+        async sendCommand() {
             if (!this.consoleInput.trim()) return
-            this.cmdHistory.unshift(this.consoleInput)
-            this.store.addLog('INFO', 'cmd', `> ${this.consoleInput}`)
-            this.store.addLog('INFO', 'info', `Command executed: ${this.consoleInput}`)
+            const cmd = this.consoleInput
+            this.cmdHistory.unshift(cmd)
+            this.store.addLog('INFO', 'cmd', `> ${cmd}`)
             this.consoleInput = ''
             this.cmdHistoryIdx = -1
+            try {
+                await api.sendCommand(cmd)
+            } catch (e) {
+                this.store.addLog('ERROR', 'error', `Command failed: ${e}`)
+            }
             this.$nextTick(() => this.scrollToBottom())
         },
         clearConsole() {

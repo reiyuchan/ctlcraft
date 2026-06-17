@@ -237,17 +237,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
+import { api } from '../api'
 import { store } from '../store'
 import type { InstalledMod, ModSearchResult, ModLoaderType, ItemStatus } from '../store'
-
-const MOCK_MOD_RESULTS: ModSearchResult[] = [
-    { id: 'fabric-api', name: 'Fabric API', author: 'FabricMC', description: 'Core API library for the Fabric mod loader.', category: 'Utility', downloads: '120M', latestVersion: '0.97.0', loaders: ['Fabric'], source: 'Modrinth', icon: '🧵', installed: false },
-    { id: 'sodium', name: 'Sodium', author: 'jellysquid3', description: 'Modern rendering engine and client optimization mod.', category: 'Performance', downloads: '45M', latestVersion: '0.5.11', loaders: ['Fabric'], source: 'Modrinth', icon: '🚀', installed: false },
-    { id: 'worldedit', name: 'WorldEdit', author: 'sk89q', description: 'In-game Minecraft map editor and world manipulation.', category: 'Utility', downloads: '90M', latestVersion: '7.3.2', loaders: ['Fabric', 'Forge'], source: 'CurseForge', icon: '✏️', installed: false },
-    { id: 'create', name: 'Create', author: 'simibubi', description: 'Adds mechanical contraptions and automation.', category: 'Gameplay', downloads: '60M', latestVersion: '0.5.1', loaders: ['Forge'], source: 'CurseForge', icon: '⚙️', installed: false },
-    { id: 'iris', name: 'Iris Shaders', author: 'coderbot', description: 'Shaders support for Fabric, compatible with Sodium.', category: 'Performance', downloads: '22M', latestVersion: '1.7.0', loaders: ['Fabric'], source: 'Modrinth', icon: '🌅', installed: false },
-    { id: 'chunky-mod', name: 'Chunky', author: 'pop4959', description: 'Pre-generates chunks quickly and efficiently.', category: 'World Generation', downloads: '15M', latestVersion: '1.4.0', loaders: ['Fabric', 'Forge'], source: 'Modrinth', icon: '🗺', installed: false },
-]
 
 export default defineComponent({
     name: 'ModsPage',
@@ -308,7 +300,6 @@ export default defineComponent({
             this.isSearchingMods = true
             this.searchResults = []
             try {
-                const { api } = await import('../api')
                 const activeBuild = this.store.activeServerBuild
                 const mcVersion = activeBuild?.mcVersion || '1.21'
                 const loader = this.activeLoader !== 'All' ? [this.activeLoader.toLowerCase()] : undefined
@@ -320,8 +311,6 @@ export default defineComponent({
                 }))
             } catch (e: any) {
                 this.$emit('toast', { msg: `Search failed: ${e}`, type: 'danger' })
-                const hydrated = MOCK_MOD_RESULTS.map(r => ({ ...r, installed: this.store.installedMods.some((m: any) => m.id === r.id) }))
-                this.searchResults = hydrated
             } finally {
                 this.isSearchingMods = false
             }
@@ -334,7 +323,6 @@ export default defineComponent({
         quickSearch(q: string): void { this.browseQuery = q; this.doSearch() },
         async installMod(result: any): Promise<void> {
             try {
-                const { api } = await import('../api')
                 this.$emit('toast', { msg: `Downloading ${result.title || result.name}...`, type: 'success' })
                 await api.downloadMod(result.id)
                 const existing = this.store.installedMods.find((m: any) => m.id === result.id)
@@ -368,7 +356,6 @@ export default defineComponent({
         async doUninstall(): Promise<void> {
             if (!this.confirmTarget) return
             try {
-                const { api } = await import('../api')
                 await api.deleteMod(this.confirmTarget.fileName)
                 this.store.installedMods = this.store.installedMods.filter((m: any) => m.id !== this.confirmTarget?.id)
                 this.$emit('toast', { msg: `Removed ${this.confirmTarget.name}`, type: 'danger' })
@@ -379,7 +366,6 @@ export default defineComponent({
         },
         async openFolder(): Promise<void> {
             try {
-                const { api } = await import('../api')
                 const dir = await api.getServerDirPath()
                 await api.openFolder(`${dir}/mods`)
             } catch (e: any) {
@@ -388,7 +374,9 @@ export default defineComponent({
         },
         checkUpdates(): void {
             this.$emit('toast', { msg: 'Checking for updates...', type: 'success' })
-            setTimeout(() => this.$emit('toast', { msg: `${this.updatesAvailable} update(s) available`, type: this.updatesAvailable > 0 ? 'warn' : 'success' }), 1200)
+            this.store.fetchInstalledMods().then(() => {
+                this.$emit('toast', { msg: `${this.updatesAvailable} update(s) available`, type: this.updatesAvailable > 0 ? 'warn' : 'success' })
+            })
         },
         handleDrop(e: DragEvent): void {
             this.isDragging = false
@@ -397,11 +385,14 @@ export default defineComponent({
             jars.forEach(f => { this.$emit('toast', { msg: `Installing ${f.name}...`, type: 'success' }); this.store.addLog('INFO', 'info', `Local mod install: ${f.name}`) })
         },
         uninstallAllPlugins(): void {
-            const names = this.store.installedPlugins.map(p => p.name).join(', ')
             this.store.installedPlugins = []
-            this.store.addLog('INFO', 'warn', `Removed all plugins to allow mod loader: ${names}`)
+            this.store.addLog('INFO', 'warn', 'Removed all plugins to allow mod loader')
             this.$emit('toast', { msg: 'All plugins removed', type: 'danger' })
         },
+    },
+
+    mounted() {
+        store.fetchInstalledMods()
     },
 })
 </script>

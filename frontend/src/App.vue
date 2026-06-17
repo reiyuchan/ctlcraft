@@ -155,19 +155,8 @@ export default {
   },
 
   mounted() {
-    // Live data ticker
-    setInterval(() => {
-      if (this.store.serverStatus !== 'running') return
-      const tps = this.store.chartData.TPS
-      tps.shift(); tps.push(+(18 + Math.random() * 2).toFixed(1))
-      const ram = this.store.chartData.RAM
-      ram.shift(); ram.push(Math.round(60 + Math.random() * 10))
-      const cpu = this.store.chartData.CPU
-      cpu.shift(); cpu.push(Math.round(8 + Math.random() * 15))
-      this.store.stats[0].value = tps[tps.length - 1] + ''
-      this.store.stats[1].value = (ram[ram.length - 1] / 100 * 8).toFixed(1) + 'G'
-      this.store.stats[2].value = cpu[cpu.length - 1] + '%'
-    }, 2000)
+    store.fetchServerInfo()
+    store.fetchServerProps()
   },
 }
 </script>

@@ -130,21 +130,11 @@
                             @click="activeVersionFilter = v">{{ v }}</button>
                     </div>
                 </div>
-                <div class="filter-group">
+                <div class="filter-group" v-if="false">
                     <span class="filter-label">VENDOR</span>
-                    <div class="filter-pills">
-                        <button v-for="v in vendorFilters" :key="v"
-                            :class="['filter-pill', { active: activeVendorFilter === v }]"
-                            @click="activeVendorFilter = v">{{ v }}</button>
-                    </div>
                 </div>
-                <div class="filter-group">
+                <div class="filter-group" v-if="false">
                     <span class="filter-label">ARCH</span>
-                    <div class="filter-pills">
-                        <button v-for="a in ['All', 'x64', 'aarch64']" :key="a"
-                            :class="['filter-pill', { active: activeArchFilter === a }]"
-                            @click="activeArchFilter = a">{{ a }}</button>
-                    </div>
                 </div>
             </div>
 
@@ -158,54 +148,38 @@
                     <thead>
                         <tr>
                             <th>VERSION</th>
-                            <th>VENDOR</th>
-                            <th>RELEASE</th>
-                            <th>ARCH</th>
-                            <th>MC VERSIONS</th>
-                            <th>SIZE</th>
+                            <th>TYPE</th>
                             <th>ACTION</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="release in filteredReleases" :key="release.id"
-                            :class="{ 'recommended-row': release.recommended }">
+                        <tr v-for="release in filteredReleases" :key="release.version"
+                            :class="{ 'recommended-row': release.lts }">
                             <td>
                                 <div class="version-cell">
-                                    <span class="version-num" :class="`vendor-${vendorSlug(release.vendor)}`">
-                                        {{ release.majorVersion }}
+                                    <span class="version-num vendor-adoptium">
+                                        {{ release.version }}
                                     </span>
-                                    <span class="lts-tag sm" v-if="release.releaseType === 'LTS'">LTS</span>
-                                    <span class="rec-tag" v-if="release.recommended">★ Recommended</span>
+                                    <span class="lts-tag sm" v-if="release.lts">LTS</span>
+                                    <span class="rec-tag" v-if="release.lts">★ Recommended</span>
                                 </div>
                             </td>
                             <td>
-                                <div class="vendor-cell">
-                                    <span class="vendor-dot" :class="`vendor-${vendorSlug(release.vendor)}`"></span>
-                                    {{ release.vendor }}
-                                </div>
+                                <span class="lts-tag sm" :class="release.lts ? 'lts' : 'sts'">{{ release.lts ? 'LTS' : 'STS' }}</span>
                             </td>
-                            <td class="td-muted">{{ release.releaseType }}</td>
-                            <td>
-                                <span class="arch-tag">{{ release.arch }}</span>
-                            </td>
-                            <td class="td-muted mc-versions">{{ release.minecraftVersions }}</td>
-                            <td class="td-muted">{{ release.downloadSize }}</td>
                             <td>
                                 <div v-if="isInstalled(release)" class="installed-indicator">
                                     <span class="installed-dot">●</span> Installed
-                                    <button v-if="!isActive(release)" class="tbl-btn sm"
-                                        @click="setActiveById(release.id)">Set Active</button>
                                 </div>
                                 <button v-else class="btn btn-sm btn-primary" :disabled="store.isInstallingJava"
                                     @click="installJava(release)">
-                                    <span v-if="store.isInstallingJava && installingId === release.id"
-                                        class="spinner">◌</span>
+                                    <span v-if="store.isInstallingJava" class="spinner">◌</span>
                                     <span v-else>⬇ Install</span>
                                 </button>
                             </td>
                         </tr>
                         <tr v-if="filteredReleases.length === 0">
-                            <td colspan="7" class="empty-row">No versions match your filters</td>
+                            <td colspan="3" class="empty-row">No versions available</td>
                         </tr>
                     </tbody>
                 </table>
@@ -322,9 +296,9 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, onMounted } from 'vue'
 import { store } from '../store'
-import type { JavaInstallation, JavaRelease, JavaVendor, JavaInstallStatus } from '../store'
+import type { JavaInstallation, JavaRelease, JavaInstallStatus } from '../store'
 
 export default defineComponent({
     name: 'JavaPage',
@@ -335,13 +309,10 @@ export default defineComponent({
             store,
             view: 'installed' as 'installed' | 'browse' | 'guide',
             activeVersionFilter: 'All',
-            activeVendorFilter: 'All',
-            activeArchFilter: 'All',
             installingId: null as string | null,
             confirmUninstall: null as JavaInstallation | null,
 
             versionFilters: ['All', '21', '17', '11', '8'],
-            vendorFilters: ['All', 'Adoptium', 'Amazon Corretto', 'Azul Zulu', 'Microsoft', 'Oracle'],
 
             compatTable: [
                 { mc: '1.20.5 – 1.21+', minJava: 21, recJava: 21, note: 'Java 21 required. Use LTS build.' },
@@ -359,17 +330,14 @@ export default defineComponent({
         },
         filteredReleases(): JavaRelease[] {
             return this.store.javaReleases.filter(r => {
-                const matchVersion = this.activeVersionFilter === 'All' || String(r.majorVersion) === this.activeVersionFilter
-                const matchVendor = this.activeVendorFilter === 'All' || r.vendor === this.activeVendorFilter
-                const matchArch = this.activeArchFilter === 'All' || r.arch === this.activeArchFilter
-                return matchVersion && matchVendor && matchArch
+                return this.activeVersionFilter === 'All' || String(r.version) === this.activeVersionFilter
             })
         },
     },
 
     methods: {
-        vendorSlug(vendor: JavaVendor): string {
-            return vendor.toLowerCase().replace(/ /g, '-')
+        vendorSlug(_vendor: string): string {
+            return 'adoptium'
         },
         javaStatusLabel(status: JavaInstallStatus): string {
             return ({ installed: '● Installed', installing: '◌ Installing', 'update-available': '↑ Update', error: '✕ Error' } as Record<JavaInstallStatus, string>)[status]
@@ -381,27 +349,22 @@ export default defineComponent({
             return 'java-8'
         },
         isInstalled(release: JavaRelease): boolean {
-            return this.store.javaInstallations.some(j => j.id === release.id)
-        },
-        isActive(release: JavaRelease): boolean {
-            return !!this.store.javaInstallations.find(j => j.id === release.id && j.isActive)
+            return this.store.javaInstallations.some(j => j.majorVersion === release.version)
         },
         setActive(java: JavaInstallation): void {
             this.store.setActiveJava(java.id)
             this.$emit('toast', { msg: `Active Java set to ${java.vendor} ${java.majorVersion}`, type: 'success' })
         },
-        setActiveById(id: string): void {
-            const java = this.store.javaInstallations.find(j => j.id === id)
-            if (java) this.setActive(java)
-        },
-        installJava(release: JavaRelease): void {
-            this.installingId = release.id
-            this.store.installJava(release)
-            this.$emit('toast', { msg: `Installing ${release.vendor} Java ${release.majorVersion}...`, type: 'success' })
-            setTimeout(() => {
+        async installJava(release: JavaRelease): Promise<void> {
+            this.installingId = `${release.version}`
+            try {
+                await store.installJava(String(release.version))
+                this.$emit('toast', { msg: `Java ${release.version} installed!`, type: 'success' })
+            } catch (e: any) {
+                this.$emit('toast', { msg: `Java install failed: ${e.message ?? e}`, type: 'danger' })
+            } finally {
                 this.installingId = null
-                this.$emit('toast', { msg: `Java ${release.majorVersion} installed!`, type: 'success' })
-            }, 3200)
+            }
         },
         updateJava(java: JavaInstallation): void {
             java.fullVersion = java.latestVersion
@@ -428,6 +391,11 @@ export default defineComponent({
             navigator.clipboard?.writeText(flags)
             this.$emit('toast', { msg: 'JVM flags copied!', type: 'success' })
         },
+    },
+
+    mounted() {
+        store.fetchJavaInstallations()
+        store.fetchJavaReleases()
     },
 })
 </script>
