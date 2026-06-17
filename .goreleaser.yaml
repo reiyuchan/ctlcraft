@@ -36,3 +36,6 @@ snapshot:
 
 changelog:
   use: github
+
+release:
+  replace_existing_artifacts: true
