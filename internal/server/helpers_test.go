@@ -101,17 +101,53 @@ func TestFilePath(t *testing.T) {
 	}
 }
 
-func TestJavaBinPath(t *testing.T) {
-	base := "/usr/lib/jvm"
-	name := "java-17-openjdk"
-	got := javaBinPath(base, name)
-
-	want := "/usr/lib/jvm/java-17-openjdk/bin/java"
+func TestFindJavaBin(t *testing.T) {
+	tmp := t.TempDir()
+	binDir := filepath.Join(tmp, "bin")
+	os.MkdirAll(binDir, 0755)
+	javaPath := filepath.Join(binDir, "java")
 	if runtime.GOOS == "windows" {
-		want = "/usr/lib/jvm/java-17-openjdk/bin/java.exe"
+		javaPath += ".exe"
 	}
-	if got != want {
-		t.Errorf("javaBinPath = %q, want %q", got, want)
+	os.WriteFile(javaPath, []byte("dummy"), 0644)
+
+	got := findJavaBin(tmp)
+	if got != javaPath {
+		t.Errorf("findJavaBin(%q) = %q, want %q", tmp, got, javaPath)
+	}
+
+	// Non-existent dir
+	got2 := findJavaBin(filepath.Join(tmp, "nonexistent"))
+	if got2 != "" {
+		t.Errorf("findJavaBin(nonexistent) = %q, want ''", got2)
+	}
+
+	// Nested structure (Adoptium tarball style)
+	nested := filepath.Join(tmp, "jdk-21.0.1")
+	os.MkdirAll(filepath.Join(nested, "bin"), 0755)
+	nestedJava := filepath.Join(nested, "bin", "java")
+	if runtime.GOOS == "windows" {
+		nestedJava += ".exe"
+	}
+	os.WriteFile(nestedJava, []byte("dummy"), 0644)
+
+	got3 := findJavaBin(tmp)
+	if got3 != javaPath {
+		t.Errorf("findJavaBin(%q) should prefer direct bin/java, got %q", tmp, got3)
+	}
+
+	// Only nested
+	tmp2 := t.TempDir()
+	os.MkdirAll(filepath.Join(tmp2, "jdk-21.0.1", "bin"), 0755)
+	nestedJava2 := filepath.Join(tmp2, "jdk-21.0.1", "bin", "java")
+	if runtime.GOOS == "windows" {
+		nestedJava2 += ".exe"
+	}
+	os.WriteFile(nestedJava2, []byte("dummy"), 0644)
+
+	got4 := findJavaBin(tmp2)
+	if got4 != nestedJava2 {
+		t.Errorf("findJavaBin(%q) with nested = %q, want %q", tmp2, got4, nestedJava2)
 	}
 }
 

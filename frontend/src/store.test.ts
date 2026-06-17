@@ -208,22 +208,16 @@ describe('store', () => {
       expect(store.javaInstallations).toHaveLength(0)
     })
 
-    it('installJava adds a new installation with installing status', () => {
-      store.installJava({
-        id: 'adoptium-21-x64', vendor: 'Adoptium', majorVersion: 21,
-        latestVersion: '21.0.5', arch: 'x64', releaseType: 'LTS',
-        downloadSize: '185MB', minecraftVersions: '1.20.5+', recommended: true,
-        installed: false,
-      })
-      const jdk = store.javaInstallations.find(j => j.id === 'adoptium-21-x64')
-      expect(jdk).toBeDefined()
-      expect(jdk?.status).toBe('installing')
+    it('installJava sets installing flag and calls API', async () => {
+      const promise = store.installJava('21')
       expect(store.isInstallingJava).toBe(true)
+      await expect(promise).rejects.toThrow()
+      expect(store.isInstallingJava).toBe(false)
     })
   })
 
   describe('server builds', () => {
-    it('downloadServerBuild sets downloading status', () => {
+    it('downloadServerBuild sets downloading status', async () => {
       const build = {
         id: 'paper-1.21.4-139', software: 'Paper' as const,
         mcVersion: '1.21.4', build: '139', releaseDate: '2024-12-18',
@@ -232,10 +226,10 @@ describe('store', () => {
         status: 'available' as const, isActive: false, downloadUrl: '',
       }
       store.serverBuilds = [build]
-      store.downloadServerBuild(build)
+      const promise = store.downloadServerBuild('Paper', '1.21.4', '139')
       expect(store.serverBuilds[0].status).toBe('downloading')
       expect(store.isDownloadingServer).toBe(true)
-      expect(store.downloadingBuildId).toBe('paper-1.21.4-139')
+      await expect(promise).rejects.toThrow()
     })
 
     it('deleteServerBuild removes build', () => {

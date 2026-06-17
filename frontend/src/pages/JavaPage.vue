@@ -110,7 +110,7 @@
                         <button v-if="java.status === 'update-available'" class="btn btn-sm btn-outline update-btn"
                             @click="updateJava(java)">↑ Update</button>
                         <button class="btn btn-sm btn-outline" @click="openJavaFolder(java)">📁 Folder</button>
-                        <button class="btn btn-sm btn-danger" :disabled="java.isActive || java.status === 'installing'"
+                        <button class="btn btn-sm btn-danger" :disabled="java.isActive || java.status === 'installing' || java.id.startsWith('sys-')"
                             @click="confirmUninstall = java">✕</button>
                     </div>
                 </div>

@@ -449,6 +449,10 @@ export const store = reactive<Store>({
   uninstallJava(id: string): void {
     const java = this.javaInstallations.find(j => j.id === id)
     if (!java) return
+    if (id.startsWith('sys-')) {
+      this.addLog('WARN', 'warn', `Cannot uninstall system Java (${java.vendor} ${java.majorVersion})`)
+      return
+    }
     this.javaInstallations = this.javaInstallations.filter(j => j.id !== id)
     this.addLog('INFO', 'warn', `Uninstalled ${java.vendor} Java ${java.majorVersion}`)
   },
@@ -470,6 +474,10 @@ export const store = reactive<Store>({
 
   async downloadServerBuild(software: string, mcVersion: string, build: string): Promise<void> {
     this.isDownloadingServer = true
+    this.downloadingBuildId = `${software.toLowerCase()}-${mcVersion}-${build}`
+    const existing = this.serverBuilds.find(
+      b => b.software === software && b.mcVersion === mcVersion && b.build === build)
+    if (existing) existing.status = 'downloading'
     try {
       await api.installServerSoftware(software, mcVersion, build)
       await this.fetchServerBuilds()
@@ -479,6 +487,7 @@ export const store = reactive<Store>({
       throw e
     } finally {
       this.isDownloadingServer = false
+      this.downloadingBuildId = null
     }
   },
 
